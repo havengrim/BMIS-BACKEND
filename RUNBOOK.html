@@ -219,6 +219,7 @@
     <li><a href="#celery">⚙️ Celery</a></li>
     <li><a href="#migrations">🗄️ Migrations</a></li>
     <li><a href="#logs">📋 Logs</a></li>
+    <li><a href="#stack">🛠️ Stack</a></li>
   </ul>
 </nav>
 
@@ -513,6 +514,136 @@ GET /system-logs/count?level=WARNING</pre>
       <div>Logs older than <strong>90 days</strong> are automatically deleted by the
       <code>cleanup_old_logs</code> Celery Beat task every Sunday at 02:00 UTC.
       You can change the retention period by editing <code>app/workers/celery_app.py</code>.</div>
+    </div>
+  </section>
+
+  <!-- Stack Used -->
+  <section id="stack">
+    <h2><span class="icon">🛠️</span> Stack Used</h2>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:24px">Every technology in this project, what it does, and why it was chosen.</p>
+
+    <!-- FastAPI -->
+    <h3>FastAPI</h3>
+    <table>
+      <tr><th>Role</th><td>HTTP API framework — handles all routes, middleware, request validation, and WebSocket connections.</td></tr>
+      <tr><th>Why</th><td>Async-first, Pydantic v2 integration for zero-boilerplate validation, automatic OpenAPI/Swagger docs, and one of the fastest Python frameworks available.</td></tr>
+      <tr><th>Version</th><td><code>0.136</code></td></tr>
+      <tr><th>Key files</th><td><code>app/main.py</code> · <code>app/api/routes/</code> · <code>app/modules/*/router.py</code></td></tr>
+    </table>
+
+    <!-- Pydantic v2 -->
+    <h3>Pydantic v2</h3>
+    <table>
+      <tr><th>Role</th><td>Data validation and serialization for all request bodies, response models, and settings.</td></tr>
+      <tr><th>Why</th><td>v2 is 5-50x faster than v1 (Rust core). <code>ConfigDict</code> and <code>model_validator</code> give clean, type-safe schemas with minimal boilerplate.</td></tr>
+      <tr><th>Key files</th><td><code>app/modules/*/schema.py</code> · <code>app/core/config.py</code> (uses <code>BaseSettings</code>)</td></tr>
+    </table>
+
+    <!-- SQLAlchemy async -->
+    <h3>SQLAlchemy 2 (async)</h3>
+    <table>
+      <tr><th>Role</th><td>ORM and query builder for all database interactions. All queries run async — they never block the event loop.</td></tr>
+      <tr><th>Why</th><td>Industry-standard ORM with full async support via <code>AsyncSession</code>. Declarative models, relationship loading, and migration support via Alembic.</td></tr>
+      <tr><th>Pool config</th><td>10 base connections · 20 overflow · recycles every 30 min · LIFO order · rollback on return</td></tr>
+      <tr><th>Key files</th><td><code>app/db/session.py</code> · <code>app/modules/*/model.py</code></td></tr>
+    </table>
+
+    <!-- psycopg3 -->
+    <h3>psycopg3</h3>
+    <table>
+      <tr><th>Role</th><td>PostgreSQL driver — the low-level connector between SQLAlchemy and the database.</td></tr>
+      <tr><th>Why</th><td>Native async support (unlike psycopg2 which requires a thread pool workaround). Better performance and binary protocol support.</td></tr>
+      <tr><th>Key files</th><td><code>app/db/session.py</code> — connection string uses <code>postgresql+psycopg://</code></td></tr>
+    </table>
+
+    <!-- PostgreSQL -->
+    <h3>PostgreSQL (AWS RDS)</h3>
+    <table>
+      <tr><th>Role</th><td>Primary relational database — stores all application data: users, profiles, blotters, certificates, complaints, permits, chat, emergency reports, and system logs.</td></tr>
+      <tr><th>Why</th><td>ACID-compliant, excellent support for UUID primary keys, JSONB, full-text search, and row-level security. AWS RDS handles backups, failover, and patching.</td></tr>
+      <tr><th>Key config</th><td><code>DATABASE_URL</code> in <code>.env</code></td></tr>
+    </table>
+
+    <!-- Alembic -->
+    <h3>Alembic</h3>
+    <table>
+      <tr><th>Role</th><td>Database migration tool — tracks schema changes and applies them in order without touching existing data.</td></tr>
+      <tr><th>Why</th><td>Official SQLAlchemy migration companion. Version-controlled migrations mean the DB schema is always reproducible from scratch.</td></tr>
+      <tr><th>Commands</th><td><code>alembic upgrade head</code> — apply all pending migrations<br><code>alembic revision --autogenerate -m "msg"</code> — generate a new migration</td></tr>
+      <tr><th>Key files</th><td><code>alembic/</code> · <code>alembic/versions/</code> · <code>alembic/env.py</code></td></tr>
+    </table>
+
+    <!-- Redis -->
+    <h3>Redis 7</h3>
+    <table>
+      <tr><th>Role</th><td>Multi-purpose in-memory store used for 4 separate concerns:</td></tr>
+      <tr><th>1. Token blacklist</th><td>When a user logs out, their JWT is stored here until it expires — prevents reuse of revoked tokens.</td></tr>
+      <tr><th>2. Permission cache</th><td>RBAC role/permission lookups are cached with a 300-second TTL — avoids a DB query on every request.</td></tr>
+      <tr><th>3. Rate limiting</th><td>Sliding-window counters per IP/user stored in Redis — enforces request limits without a DB.</td></tr>
+      <tr><th>4. Celery broker</th><td>Task messages from FastAPI are pushed onto Redis queues; Celery workers pull from them.</td></tr>
+      <tr><th>Key config</th><td><code>REDIS_URL</code> in <code>.env</code></td></tr>
+      <tr><th>Key files</th><td><code>app/core/redis.py</code> · <code>app/middleware/rate_limit.py</code> · <code>app/workers/celery_app.py</code></td></tr>
+    </table>
+
+    <!-- Celery -->
+    <h3>Celery 5.6</h3>
+    <table>
+      <tr><th>Role</th><td>Distributed task queue — offloads slow or scheduled work from the HTTP request/response cycle.</td></tr>
+      <tr><th>Why</th><td>Sending emails, generating PDFs, and pushing emergency notifications should never slow down an API response. Celery runs them in the background.</td></tr>
+      <tr><th>Queues</th><td><code>default</code> — emails, PDFs, log cleanup<br><code>priority</code> — emergency alerts (dedicated worker, never queued behind normal tasks)</td></tr>
+      <tr><th>Beat</th><td>Built-in scheduler — runs <code>cleanup_old_logs</code> every Sunday 02:00 UTC automatically.</td></tr>
+      <tr><th>Windows note</th><td>Must use <code>--pool=solo</code> on Windows. Linux/prod uses the default prefork pool.</td></tr>
+      <tr><th>Key files</th><td><code>app/workers/celery_app.py</code> · <code>app/workers/tasks.py</code></td></tr>
+    </table>
+
+    <!-- JWT / Auth -->
+    <h3>JWT Authentication (python-jose)</h3>
+    <table>
+      <tr><th>Role</th><td>Stateless authentication — every protected request carries a signed JWT; the server validates the signature without hitting the DB.</td></tr>
+      <tr><th>Why</th><td>Scalable across multiple API instances (no shared session store needed). Combined with Redis blacklisting for logout support.</td></tr>
+      <tr><th>Key config</th><td><code>SECRET_KEY</code>, <code>ALGORITHM</code>, <code>ACCESS_TOKEN_EXPIRE_MINUTES</code> in <code>.env</code></td></tr>
+      <tr><th>Key files</th><td><code>app/core/security.py</code> · <code>app/middleware/auth_middleware.py</code> · <code>app/core/dependencies.py</code></td></tr>
+    </table>
+
+    <!-- RBAC -->
+    <h3>Role-Based Access Control (RBAC)</h3>
+    <table>
+      <tr><th>Role</th><td>Fine-grained permission system — each endpoint requires a specific permission (e.g. <code>blotter.create</code>, <code>system_logs.read</code>). Permissions are assigned to roles, roles to users.</td></tr>
+      <tr><th>Why</th><td>A barangay system has multiple user types (admin, staff, resident, official) — RBAC lets you control exactly what each can see and do without hardcoding roles in every route.</td></tr>
+      <tr><th>Cache</th><td>Permission lookups cached in Redis for 300s — a heavy role with many permissions only hits the DB once per 5 minutes.</td></tr>
+      <tr><th>Key files</th><td><code>app/modules/rbac/</code> · <code>app/core/dependencies.py</code></td></tr>
+    </table>
+
+    <!-- Repository Pattern -->
+    <h3>Repository Pattern</h3>
+    <table>
+      <tr><th>Role</th><td>All database queries are encapsulated in typed repository classes — routers never write raw SQL or ORM queries directly.</td></tr>
+      <tr><th>Why</th><td>Separates business logic from data access. Makes testing easy (swap the repo for a mock), and keeps routers thin and readable.</td></tr>
+      <tr><th>Structure</th><td><code>BaseRepository[M]</code> provides <code>get</code>, <code>list</code>, <code>create</code>, <code>update</code>, <code>delete</code>, <code>bulk_create</code>. Each module extends it with domain-specific queries.</td></tr>
+      <tr><th>Key files</th><td><code>app/repositories/base.py</code> · <code>app/repositories/*_repository.py</code></td></tr>
+    </table>
+
+    <!-- Async DB Logging -->
+    <h3>Async DB Log Handler</h3>
+    <table>
+      <tr><th>Role</th><td>Persists structured log records to the <code>system_logs</code> table without blocking HTTP requests.</td></tr>
+      <tr><th>How</th><td>Uses an <code>asyncio.Queue(maxsize=10,000)</code> as a buffer. A background worker drains the queue in batches of 50 every 2 seconds — so even a burst of logs never slows down the API.</td></tr>
+      <tr><th>Context propagation</th><td><code>ContextVar</code>s automatically attach the current <code>request_id</code> and <code>user_id</code> to every log record — no need to pass them manually.</td></tr>
+      <tr><th>Key files</th><td><code>app/core/log_handler.py</code> · <code>app/core/context.py</code> · <code>app/modules/system_logs/</code></td></tr>
+    </table>
+
+    <!-- Pytest -->
+    <h3>Pytest + HTTPX</h3>
+    <table>
+      <tr><th>Role</th><td>Automated test suite — 21 tests covering auth, CRUD endpoints, permissions, and middleware.</td></tr>
+      <tr><th>Why</th><td><code>httpx.AsyncClient</code> with <code>ASGITransport</code> lets tests hit the real FastAPI app in-process — no running server needed, no mocking the HTTP layer.</td></tr>
+      <tr><th>Run tests</th><td><code>pytest tests/ -v</code></td></tr>
+      <tr><th>Key files</th><td><code>tests/</code> · <code>pytest.ini</code></td></tr>
+    </table>
+
+    <div class="callout tip" style="margin-top:28px">
+      <span class="callout-icon">💡</span>
+      <div>All packages and their pinned versions are in <code>requirements.txt</code>. Run <code>pip install -r requirements.txt</code> to reproduce the exact environment.</div>
     </div>
   </section>
 
