@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import date, time
 import uuid
@@ -36,5 +36,4 @@ class BlotterReportResponse(BlotterReportBase):
     hearing_date: Optional[date] = None
     resolution_notes: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

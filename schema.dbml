@@ -1,0 +1,331 @@
+Enum userrole {
+  SUPER_ADMIN
+  BARANGAY_ADMIN
+  STAFF
+  RESIDENT
+}
+
+Enum userstatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+Enum announcementstatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+Enum targetaudience {
+  ALL
+  RESIDENTS
+  SENIORS
+  YOUTH
+  BUSINESSES
+}
+
+Enum certificatetype {
+  BARANGAY_CLEARANCE
+  INDIGENCY
+  RESIDENCY
+  BUSINESS_CLEARANCE
+  GOOD_MORAL
+}
+
+Enum emergencystatus {
+  SUBMITTED
+  ACKNOWLEDGED
+  RESPONDING
+  RESOLVED
+}
+
+Enum emergencytype {
+  FIRE
+  FLOOD
+  MEDICAL
+  CRIME
+  EARTHQUAKE
+  ACCIDENT
+  OTHER
+}
+
+Enum blotterstatus {
+  FILED
+  UNDER_INVESTIGATION
+  MEDIATED
+  RESOLVED
+  DISMISSED
+}
+
+Enum permitstatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+Enum requeststatus {
+  PENDING
+  PROCESSING
+  READY
+  RELEASED
+  REJECTED
+}
+
+Enum complainttype {
+  NOISE
+  GARBAGE
+  PROPERTY
+  PUBLIC_DISTURBANCE
+  ILLEGAL_STRUCTURE
+  OTHER
+}
+
+Enum complaintstatus {
+  PENDING
+  UNDER_REVIEW
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+Enum complaintpriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+Table users {
+  id uuid [pk]
+  email varchar(255) [not null, unique]
+  username varchar(100) [not null, unique]
+  hashed_password varchar(255)
+  oauth_provider varchar(50)
+  oauth_provider_id varchar(255) [unique]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  middle_name varchar(100)
+  contact_number varchar(20)
+  address text
+  barangay_id int
+  role userrole [not null]
+  status userstatus [not null]
+  is_verified boolean [not null]
+  last_login timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+}
+
+Table profiles {
+  id uuid [pk]
+  user_id uuid [not null, unique]
+  name varchar(255)
+  contact_number varchar(20)
+  house_num varchar(20)
+  address text
+  civil_status varchar(100)
+  birthdate date
+  image varchar(255)
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+Table roles {
+  id uuid [pk]
+  code varchar(100) [not null, unique]
+  name varchar(150) [not null, unique]
+  description text
+  is_system boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+}
+
+Table permissions {
+  id uuid [pk]
+  code varchar(150) [not null, unique]
+  module varchar(100) [not null]
+  action varchar(100) [not null]
+  name varchar(150) [not null]
+  description text
+  created_at timestamptz [not null]
+}
+
+Table role_permissions {
+  id uuid [pk]
+  role_id uuid [not null]
+  permission_id uuid [not null]
+  created_at timestamptz [not null]
+
+  indexes {
+    (role_id, permission_id) [unique, name: 'uq_role_permission']
+  }
+}
+
+Table user_role_assignments {
+  id uuid [pk]
+  user_id uuid [not null]
+  role_id uuid [not null]
+  created_at timestamptz [not null]
+
+  indexes {
+    (user_id, role_id) [unique, name: 'uq_user_role_assignment']
+  }
+}
+
+Table announcements {
+  id uuid [pk]
+  title varchar(255) [not null]
+  description text [not null]
+  status announcementstatus [not null]
+  start_date date
+  end_date date
+  location varchar(255)
+  target_audience targetaudience [not null]
+  image varchar(255)
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+Table blotter_reports {
+  id uuid [pk]
+  report_number varchar(20) [not null, unique]
+  filed_by_id uuid
+  complainant_name varchar(255) [not null]
+  complainant_contact varchar(50)
+  complainant_email varchar(254)
+  complainant_address text
+  respondent_name varchar(255)
+  respondent_address text
+  incident_type varchar(100) [not null]
+  incident_date date [not null]
+  incident_time time
+  incident_location varchar(255)
+  narrative text
+  status blotterstatus [not null]
+  hearing_date date
+  resolution_notes text
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+Table business_permits {
+  id uuid [pk]
+  user_id uuid
+  permit_number varchar(20) [unique]
+  business_name varchar(255) [not null]
+  business_type varchar(100) [not null]
+  business_description text
+  business_address text [not null]
+  owner_name varchar(255) [not null]
+  owner_address text [not null]
+  house_num varchar(20)
+  contact_number varchar(20) [not null]
+  is_renewal boolean [not null]
+  status permitstatus [not null]
+  remarks text
+  expiry_date date
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+Table certificate_requests {
+  id uuid [pk]
+  user_id uuid
+  request_number varchar(20) [not null, unique]
+  certificate_type certificatetype [not null]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  middle_name varchar(100)
+  complete_address text [not null]
+  house_num varchar(20)
+  contact_number varchar(20) [not null]
+  email_address varchar(254) [not null]
+  purpose text [not null]
+  business_name varchar(255)
+  agree_terms boolean [not null]
+  status requeststatus [not null]
+  remarks text
+  released_at timestamptz
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+Table certificate_counters {
+  id uuid [pk]
+  certificate_type certificatetype [not null, unique]
+  last_number int [not null]
+  year int [not null]
+}
+
+Table complaints {
+  id uuid [pk]
+  user_id uuid
+  reference_number varchar(50) [not null, unique]
+  fullname varchar(150) [not null]
+  contact_number varchar(20) [not null]
+  address text [not null]
+  email_address varchar(254) [not null]
+  type complainttype [not null]
+  subject varchar(200) [not null]
+  detailed_description text [not null]
+  evidence varchar(255)
+  latitude varchar(20)
+  longitude varchar(20)
+  respondent_name varchar(150)
+  respondent_address text
+  date_filed date [not null]
+  status complaintstatus [not null]
+  priority complaintpriority [not null]
+  resolution_notes text
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+Table emergency_alerts {
+  id uuid [pk]
+  type emergencytype [not null, unique]
+  alert_message text [not null]
+  status emergencystatus [not null]
+  created_at timestamptz
+  updated_at timestamptz
+}
+
+Table emergency_reports {
+  id uuid [pk]
+  name varchar(100) [not null]
+  contact_number varchar(20)
+  incident_type emergencytype [not null]
+  description text [not null]
+  latitude varchar(20)
+  longitude varchar(20)
+  location_text varchar(255) [not null]
+  media_file varchar(255)
+  alert_message text
+  status emergencystatus [not null]
+  submitted_at timestamptz
+  updated_at timestamptz
+}
+
+Table chat_messages {
+  id uuid [pk]
+  user_id uuid
+  user_message text [not null]
+  bot_reply text
+  timestamp timestamptz
+}
+
+Ref: profiles.user_id > users.id [delete: cascade]
+Ref: user_role_assignments.user_id > users.id [delete: cascade]
+Ref: user_role_assignments.role_id > roles.id [delete: cascade]
+Ref: role_permissions.role_id > roles.id [delete: cascade]
+Ref: role_permissions.permission_id > permissions.id [delete: cascade]
+Ref: blotter_reports.filed_by_id > users.id [delete: set null]
+Ref: business_permits.user_id > users.id [delete: set null]
+Ref: certificate_requests.user_id > users.id [delete: set null]
+Ref: complaints.user_id > users.id [delete: set null]
+Ref: chat_messages.user_id > users.id [delete: set null]

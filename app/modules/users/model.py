@@ -27,7 +27,11 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     username = Column(String(100), unique=True, nullable=False, index=True)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True)  # nullable for OAuth users
+
+    # SSO / OAuth
+    oauth_provider = Column(String(50), nullable=True)      # "email" | "google"
+    oauth_provider_id = Column(String(255), nullable=True, unique=True, index=True)
 
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
@@ -46,6 +50,7 @@ class User(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     profile = relationship("Profile", back_populates="user", uselist=False)
+    role_assignments = relationship("UserRoleAssignment", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User {self.email} [{self.role}]>"

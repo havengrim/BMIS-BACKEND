@@ -1,8 +1,8 @@
-"""add_all_bmis_tables
+"""initial_clean_schema
 
-Revision ID: 484ede310ce9
-Revises: 5d69f4c333e3
-Create Date: 2026-05-08 05:38:49.351287+00:00
+Revision ID: 6b52af676e37
+Revises: 
+Create Date: 2026-05-08 07:03:18.226918+00:00
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '484ede310ce9'
-down_revision: Union[str, None] = '5d69f4c333e3'
+revision: str = '6b52af676e37'
+down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -47,7 +47,7 @@ def upgrade() -> None:
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('type', sa.Enum('FIRE', 'FLOOD', 'MEDICAL', 'CRIME', 'EARTHQUAKE', 'ACCIDENT', 'OTHER', name='emergencytype'), nullable=False),
     sa.Column('alert_message', sa.Text(), nullable=False),
-    sa.Column('is_active', sa.Enum('SUBMITTED', 'ACKNOWLEDGED', 'RESPONDING', 'RESOLVED', name='emergencystatus'), nullable=False),
+    sa.Column('status', sa.Enum('SUBMITTED', 'ACKNOWLEDGED', 'RESPONDING', 'RESOLVED', name='emergencystatus'), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id'),
@@ -71,6 +71,58 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_emergency_reports_id'), 'emergency_reports', ['id'], unique=False)
+    op.create_table('permissions',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('code', sa.String(length=150), nullable=False),
+    sa.Column('module', sa.String(length=100), nullable=False),
+    sa.Column('action', sa.String(length=100), nullable=False),
+    sa.Column('name', sa.String(length=150), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_permissions_action'), 'permissions', ['action'], unique=False)
+    op.create_index(op.f('ix_permissions_code'), 'permissions', ['code'], unique=True)
+    op.create_index(op.f('ix_permissions_module'), 'permissions', ['module'], unique=False)
+    op.create_table('roles',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('code', sa.String(length=100), nullable=False),
+    sa.Column('name', sa.String(length=150), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('is_system', sa.Boolean(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('name')
+    )
+    op.create_index(op.f('ix_roles_code'), 'roles', ['code'], unique=True)
+    op.create_table('users',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=False),
+    sa.Column('username', sa.String(length=100), nullable=False),
+    sa.Column('hashed_password', sa.String(length=255), nullable=True),
+    sa.Column('oauth_provider', sa.String(length=50), nullable=True),
+    sa.Column('oauth_provider_id', sa.String(length=255), nullable=True),
+    sa.Column('first_name', sa.String(length=100), nullable=False),
+    sa.Column('last_name', sa.String(length=100), nullable=False),
+    sa.Column('middle_name', sa.String(length=100), nullable=True),
+    sa.Column('contact_number', sa.String(length=20), nullable=True),
+    sa.Column('address', sa.Text(), nullable=True),
+    sa.Column('barangay_id', sa.Integer(), nullable=True),
+    sa.Column('role', sa.Enum('SUPER_ADMIN', 'BARANGAY_ADMIN', 'STAFF', 'RESIDENT', name='userrole'), nullable=False),
+    sa.Column('status', sa.Enum('ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING', name='userstatus'), nullable=False),
+    sa.Column('is_verified', sa.Boolean(), nullable=False),
+    sa.Column('last_login', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_users_barangay_id'), 'users', ['barangay_id'], unique=False)
+    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
+    op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
+    op.create_index(op.f('ix_users_oauth_provider_id'), 'users', ['oauth_provider_id'], unique=True)
+    op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
     op.create_table('blotter_reports',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('report_number', sa.String(length=20), nullable=False),
@@ -198,11 +250,41 @@ def upgrade() -> None:
     sa.UniqueConstraint('user_id')
     )
     op.create_index(op.f('ix_profiles_id'), 'profiles', ['id'], unique=False)
+    op.create_table('role_permissions',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('role_id', sa.UUID(), nullable=False),
+    sa.Column('permission_id', sa.UUID(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['permission_id'], ['permissions.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['role_id'], ['roles.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('role_id', 'permission_id', name='uq_role_permission')
+    )
+    op.create_index(op.f('ix_role_permissions_permission_id'), 'role_permissions', ['permission_id'], unique=False)
+    op.create_index(op.f('ix_role_permissions_role_id'), 'role_permissions', ['role_id'], unique=False)
+    op.create_table('user_role_assignments',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('role_id', sa.UUID(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.ForeignKeyConstraint(['role_id'], ['roles.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'role_id', name='uq_user_role_assignment')
+    )
+    op.create_index(op.f('ix_user_role_assignments_role_id'), 'user_role_assignments', ['role_id'], unique=False)
+    op.create_index(op.f('ix_user_role_assignments_user_id'), 'user_role_assignments', ['user_id'], unique=False)
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index(op.f('ix_user_role_assignments_user_id'), table_name='user_role_assignments')
+    op.drop_index(op.f('ix_user_role_assignments_role_id'), table_name='user_role_assignments')
+    op.drop_table('user_role_assignments')
+    op.drop_index(op.f('ix_role_permissions_role_id'), table_name='role_permissions')
+    op.drop_index(op.f('ix_role_permissions_permission_id'), table_name='role_permissions')
+    op.drop_table('role_permissions')
     op.drop_index(op.f('ix_profiles_id'), table_name='profiles')
     op.drop_table('profiles')
     op.drop_index(op.f('ix_complaints_reference_number'), table_name='complaints')
@@ -218,6 +300,18 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_blotter_reports_report_number'), table_name='blotter_reports')
     op.drop_index(op.f('ix_blotter_reports_id'), table_name='blotter_reports')
     op.drop_table('blotter_reports')
+    op.drop_index(op.f('ix_users_username'), table_name='users')
+    op.drop_index(op.f('ix_users_oauth_provider_id'), table_name='users')
+    op.drop_index(op.f('ix_users_id'), table_name='users')
+    op.drop_index(op.f('ix_users_email'), table_name='users')
+    op.drop_index(op.f('ix_users_barangay_id'), table_name='users')
+    op.drop_table('users')
+    op.drop_index(op.f('ix_roles_code'), table_name='roles')
+    op.drop_table('roles')
+    op.drop_index(op.f('ix_permissions_module'), table_name='permissions')
+    op.drop_index(op.f('ix_permissions_code'), table_name='permissions')
+    op.drop_index(op.f('ix_permissions_action'), table_name='permissions')
+    op.drop_table('permissions')
     op.drop_index(op.f('ix_emergency_reports_id'), table_name='emergency_reports')
     op.drop_table('emergency_reports')
     op.drop_index(op.f('ix_emergency_alerts_id'), table_name='emergency_alerts')

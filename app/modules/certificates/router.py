@@ -1,15 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+import logging
 import uuid
 from datetime import datetime
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.dependencies import Pagination, get_current_user, require_permissions
 from app.db.session import get_db
-from app.modules.certificates.model import CertificateRequest, CertificateCounter
-from app.modules.certificates.schema import CertificateRequestCreate, CertificateRequestUpdate, CertificateRequestResponse
-from app.core.dependencies import get_current_user
+from app.modules.certificates.model import CertificateCounter, CertificateRequest
+from app.modules.certificates.schema import CertificateRequestCreate, CertificateRequestResponse, CertificateRequestUpdate
+from app.repositories.certificate_repository import certificate_repo
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def _generate_request_number(db: AsyncSession, cert_type: str) -> str:
@@ -31,11 +35,14 @@ async def _generate_request_number(db: AsyncSession, cert_type: str) -> str:
 
 @router.get("/", response_model=list[CertificateRequestResponse])
 async def list_requests(
+    page: Pagination = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    _: dict = Depends(require_permissions("certificates.read")),
 ):
-    result = await db.execute(select(CertificateRequest).order_by(CertificateRequest.created_at.desc()))
-    return result.scalars().all()
+    requests = await certificate_repo.list(db, skip=page.skip, limit=page.limit)
+    logger.info("CERTIFICATES_LIST count=%d skip=%d by user=%s", len(requests), page.skip, current_user.get("sub"))
+    return requests
 
 
 @router.post("/", response_model=CertificateRequestResponse, status_code=status.HTTP_201_CREATED)
@@ -43,15 +50,18 @@ async def create_request(
     body: CertificateRequestCreate,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    _: dict = Depends(require_permissions("certificates.manage")),
 ):
-    req = CertificateRequest(
+    req = await certificate_repo.create(db, CertificateRequest(
         **body.model_dump(),
         user_id=uuid.UUID(current_user["sub"]),
         request_number=await _generate_request_number(db, body.certificate_type.value),
-    )
-    db.add(req)
+    ))
     await db.commit()
-    await db.refresh(req)
+    logger.info(
+        "CERTIFICATES_CREATE id=%s request_number=%s type=%s by user=%s",
+        req.id, req.request_number, req.certificate_type, current_user.get("sub"),
+    )
     return req
 
 
@@ -61,13 +71,18 @@ async def update_request(
     body: CertificateRequestUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
+    _: dict = Depends(require_permissions("certificates.manage")),
 ):
-    result = await db.execute(select(CertificateRequest).where(CertificateRequest.id == id))
-    obj = result.scalar_one_or_none()
+    obj = await certificate_repo.get(db, id)
     if not obj:
+        logger.warning("CERTIFICATES_UPDATE_NOT_FOUND id=%s by user=%s", id, current_user.get("sub"))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
-    for field, value in body.model_dump(exclude_unset=True).items():
-        setattr(obj, field, value)
+    data = body.model_dump(exclude_unset=True)
+    obj = await certificate_repo.update(db, obj, data)
     await db.commit()
-    await db.refresh(obj)
+    logger.info(
+        "CERTIFICATES_UPDATE id=%s request_number=%s fields=%s status=%s by user=%s",
+        obj.id, obj.request_number, list(data.keys()), obj.status, current_user.get("sub"),
+    )
     return obj
+

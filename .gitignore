@@ -146,3 +146,13 @@ docker-compose.override.yml
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs (keep the directory via logs/.gitkeep, but ignore log files)
+logs/*.log
+logs/*.out
+logs/*.err
+
+# Celery Beat runtime state files
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
