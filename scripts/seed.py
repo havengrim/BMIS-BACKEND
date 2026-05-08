@@ -14,7 +14,7 @@ if sys.platform == "win32":
 
 from sqlalchemy import select
 from app.db.session import AsyncSessionLocal
-from app.models.user import User, UserRole, UserStatus
+from app.modules.users.model import User, UserRole, UserStatus
 from app.core.security import Security
 
 

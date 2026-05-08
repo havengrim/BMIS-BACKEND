@@ -13,7 +13,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
 from app.db.base import Base  # noqa: F401
-from app.models.user import User  # noqa: F401 - register model with metadata
+from app.modules.users.model import User  # noqa: F401
+from app.modules.profiles.model import Profile  # noqa: F401
+from app.modules.announcements.model import Announcement  # noqa: F401
+from app.modules.blotter.model import BlotterReport  # noqa: F401
+from app.modules.certificates.model import CertificateRequest, CertificateCounter  # noqa: F401
+from app.modules.business_permits.model import BusinessPermit  # noqa: F401
+from app.modules.complaints.model import Complaint  # noqa: F401
+from app.modules.emergency.model import EmergencyReport, EmergencyAlert  # noqa: F401
+from app.modules.chat.model import ChatMessage  # noqa: F401
 
 # Fix for Windows: psycopg async requires SelectorEventLoop
 if sys.platform == "win32":
