@@ -218,6 +218,7 @@
     <li><a href="#env">🔑 Environment</a></li>
     <li><a href="#celery">⚙️ Celery</a></li>
     <li><a href="#migrations">🗄️ Migrations</a></li>
+    <li><a href="#rbac">🔐 RBAC</a></li>
     <li><a href="#logs">📋 Logs</a></li>
     <li><a href="#stack">🛠️ Stack</a></li>
   </ul>
@@ -477,7 +478,134 @@ print('Task ID:', result.id)
     </table>
   </section>
 
-  <!-- ── Logs ── -->
+  <!-- RBAC -->
+  <section id="rbac">
+    <h2><span class="icon">🔐</span> RBAC &mdash; Roles &amp; Permissions</h2>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:20px">The seed script runs <strong>once</strong> on first deploy to bootstrap the system: it creates the 4 built-in roles, default permissions, and the initial super-admin account. All ongoing role and permission management is done via the API or UI &mdash; no need to touch the seed script again.</p>
+
+    <h3>How it works</h3>
+    <table>
+      <tr><th>Step</th><th>What happens</th></tr>
+      <tr><td>1. Request arrives</td><td>JWT is validated, <code>user_id</code> extracted from token.</td></tr>
+      <tr><td>2. Permission lookup</td><td>User's roles are fetched, all permissions for those roles are combined. Result is cached in Redis for 300s.</td></tr>
+      <tr><td>3. Permission check</td><td>The required permission for the endpoint (e.g. <code>blotter.create</code>) is checked against the user's permission set.</td></tr>
+      <tr><td>4. Allow / Deny</td><td>If the user has the permission &rarr; request proceeds. If not &rarr; <strong>403 Forbidden</strong>.</td></tr>
+    </table>
+
+    <h3>Default roles</h3>
+    <table>
+      <tr><th>Role</th><th>What they can do</th></tr>
+      <tr><td><code>super_admin</code></td><td>All permissions &mdash; full system access including RBAC management.</td></tr>
+      <tr><td><code>barangay_admin</code></td><td>All module permissions except <code>rbac.manage</code>.</td></tr>
+      <tr><td><code>staff</code></td><td>Read/manage operational modules (blotter, certs, permits, complaints, emergency, chat). No user or RBAC management.</td></tr>
+      <tr><td><code>resident</code></td><td>Own profile and chat only.</td></tr>
+    </table>
+
+    <h3>Default permission codes</h3>
+    <table>
+      <tr><th>Code</th><th>What it guards</th></tr>
+      <tr><td><code>users.read</code> / <code>users.manage</code></td><td>GET / POST, PATCH, DELETE on users</td></tr>
+      <tr><td><code>profiles.read</code> / <code>profiles.manage</code></td><td>Resident profile endpoints</td></tr>
+      <tr><td><code>announcements.manage</code></td><td>Create, update, delete announcements</td></tr>
+      <tr><td><code>blotter.read</code> / <code>blotter.manage</code></td><td>Blotter report endpoints</td></tr>
+      <tr><td><code>certificates.read</code> / <code>certificates.manage</code></td><td>Certificate request endpoints</td></tr>
+      <tr><td><code>business_permits.read</code> / <code>business_permits.manage</code></td><td>Business permit endpoints</td></tr>
+      <tr><td><code>complaints.read</code> / <code>complaints.manage</code></td><td>Complaint endpoints</td></tr>
+      <tr><td><code>emergency.read</code> / <code>emergency.manage</code></td><td>Emergency report and alert endpoints</td></tr>
+      <tr><td><code>chat.read</code> / <code>chat.manage</code></td><td>Chat history and send message</td></tr>
+      <tr><td><code>rbac.read</code> / <code>rbac.manage</code></td><td>Read/manage roles, permissions, assignments</td></tr>
+      <tr><td><code>system_logs.read</code></td><td><code>GET /system-logs/</code> admin endpoint</td></tr>
+    </table>
+
+    <h3>How to add a new permission</h3>
+    <p style="color:var(--muted);font-size:.84rem;margin-bottom:8px">New permissions are created at runtime via the API &mdash; <strong>no seed script needed</strong>. Requires <code>rbac.manage</code> permission.</p>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># Step 1 — Create the permission via API</span>
+POST /rbac/permissions
+{
+  "code": "reports.create",
+  "module": "reports",
+  "action": "create",
+  "name": "Create reports"
+}
+
+<span class="comment"># Step 2 — Assign it to a role</span>
+POST /rbac/roles/{role_id}/permissions
+{
+  "permission_ids": ["&lt;permission_uuid&gt;"]
+}
+
+<span class="comment"># Get all permission UUIDs</span>
+GET /rbac/permissions</pre>
+
+    <h3>How to add a new role</h3>
+    <p style="color:var(--muted);font-size:.84rem;margin-bottom:8px">Custom roles are created at runtime via the API &mdash; <strong>no seed script needed</strong>. Only the 4 built-in system roles (<code>super_admin</code>, <code>barangay_admin</code>, <code>staff</code>, <code>resident</code>) come from the seed. System roles are protected and cannot be modified or deleted via the API.</p>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># Step 1 — Create the role via API (requires rbac.manage permission)</span>
+POST /rbac/roles
+{
+  "code": "auditor",
+  "name": "Auditor",
+  "description": "Read-only access to operational modules"
+}
+
+<span class="comment"># Step 2 — Assign permissions to the role</span>
+POST /rbac/roles/{role_id}/permissions
+{
+  "permission_ids": ["&lt;uuid&gt;", "&lt;uuid&gt;"]
+}
+
+<span class="comment"># Step 3 — Assign the role to a user</span>
+POST /rbac/users/{user_id}/roles
+{
+  "role_id": "&lt;uuid&gt;"
+}</pre>
+
+    <div class="callout info" style="margin-top:0">
+      <span class="callout-icon">ℹ️</span>
+      <div>You can get all available permission UUIDs from <code>GET /rbac/permissions</code> (requires <code>rbac.read</code>). The Swagger UI at <code>/docs</code> is the easiest way to do this interactively.</div>
+    </div>
+
+    <h3>How to protect a new endpoint</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># GET endpoint</span>
+<span class="cmd">@router.get</span>(<span class="val">"/reports/"</span>, dependencies=[Depends(requires_permission(<span class="val">"reports.read"</span>))])
+async def list_reports(...):
+    ...
+
+<span class="comment"># POST endpoint</span>
+<span class="cmd">@router.post</span>(<span class="val">"/reports/"</span>, dependencies=[Depends(requires_permission(<span class="val">"reports.create"</span>))])
+async def create_report(...):
+    ...
+
+<span class="comment"># PATCH endpoint</span>
+<span class="cmd">@router.patch</span>(<span class="val">"/reports/{id}"</span>, dependencies=[Depends(requires_permission(<span class="val">"reports.manage"</span>))])
+async def update_report(...):
+    ...
+
+<span class="comment"># DELETE endpoint</span>
+<span class="cmd">@router.delete</span>(<span class="val">"/reports/{id}"</span>, dependencies=[Depends(requires_permission(<span class="val">"reports.manage"</span>))])
+async def delete_report(...):
+    ...</pre>
+
+    <h3>Workflow summary</h3>
+    <ol class="steps">
+      <li><strong>First deploy only</strong> &mdash; run <code>python -m scripts.seed</code> once to create system roles, default permissions, and the initial super-admin.</li>
+      <li><strong>Add a new permission</strong> &mdash; <code>POST /rbac/permissions</code> via the API or Swagger UI.</li>
+      <li><strong>Add a new role</strong> &mdash; <code>POST /rbac/roles</code> via the API or Swagger UI.</li>
+      <li><strong>Assign permissions to a role</strong> &mdash; <code>POST /rbac/roles/{id}/permissions</code>.</li>
+      <li><strong>Protect a new endpoint</strong> &mdash; add <code>dependencies=[Depends(requires_permission("your.permission"))]</code> to the route decorator.</li>
+      <li><strong>Clear Redis cache (dev only)</strong> &mdash; run <code>redis-cli FLUSHDB</code> to see permission changes immediately without waiting 300s.</li>
+    </ol>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div>The seed script is <strong>idempotent</strong> &mdash; always safe to re-run. It checks for existing records before inserting so you will never get duplicates.</div>
+    </div>
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div>After re-seeding, Redis caches old permissions for up to <strong>300 seconds</strong>. In development, flush with <code>redis-cli FLUSHDB</code> to see changes immediately. In production, the cache will expire naturally.</div>
+    </div>
+  </section>
+
+  <!-- Logs -->
   <section id="logs">
     <h2><span class="icon">📋</span> Logging &amp; Observability</h2>
 

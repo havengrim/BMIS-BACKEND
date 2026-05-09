@@ -156,3 +156,4 @@ logs/*.err
 celerybeat-schedule
 celerybeat-schedule-shm
 celerybeat-schedule-wal
+.bmis-pids
