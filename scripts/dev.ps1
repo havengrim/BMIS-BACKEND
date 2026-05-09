@@ -68,33 +68,39 @@ if ($LASTEXITCODE -eq 0) {
 
 Write-Header "Starting services..."
 
-$useWT = $false
-try { Get-Command wt -ErrorAction Stop | Out-Null; $useWT = $true } catch {}
-
 $api      = "$scripts\_start-api.ps1"
 $celeryD  = "$scripts\_start-celery-default.ps1"
 $celeryP  = "$scripts\_start-celery-priority.ps1"
 $celeryB  = "$scripts\_start-celery-beat.ps1"
 
+$pidFile = "$root\.bmis-pids"
+$pids = @()
+
+$useWT = $false
+try { Get-Command wt -ErrorAction Stop | Out-Null; $useWT = $true } catch {}
+
 if ($useWT) {
-    Write-Ok "Windows Terminal detected - opening tabs..."
-    $wtArgs = @(
-        "new-tab", "--title", "FastAPI",           "powershell", "-NoExit", "-File", "`"$api`"",
-        ";", "new-tab", "--title", "Celery-Default",  "powershell", "-NoExit", "-File", "`"$celeryD`"",
-        ";", "new-tab", "--title", "Celery-Priority", "powershell", "-NoExit", "-File", "`"$celeryP`"",
-        ";", "new-tab", "--title", "Celery-Beat",     "powershell", "-NoExit", "-File", "`"$celeryB`""
-    )
-    Start-Process wt -ArgumentList $wtArgs
+    Write-Ok "Windows Terminal detected - opening grouped tabs..."
+    $wtArgs = "new-tab --title FastAPI powershell -NoExit -File `"$api`" ; new-tab --title Celery-Default powershell -NoExit -File `"$celeryD`" ; new-tab --title Celery-Priority powershell -NoExit -File `"$celeryP`" ; new-tab --title Celery-Beat powershell -NoExit -File `"$celeryB`""
+    $wt = Start-Process wt -ArgumentList $wtArgs -PassThru
+    $pids += $wt.Id
 } else {
     Write-Ok "Opening separate PowerShell windows..."
-    Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$api`""
+    $p1 = Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$api`"" -PassThru
+    $pids += $p1.Id
     Start-Sleep -Milliseconds 600
-    Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$celeryD`""
+    $p2 = Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$celeryD`"" -PassThru
+    $pids += $p2.Id
     Start-Sleep -Milliseconds 600
-    Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$celeryP`""
+    $p3 = Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$celeryP`"" -PassThru
+    $pids += $p3.Id
     Start-Sleep -Milliseconds 600
-    Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$celeryB`""
+    $p4 = Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$celeryB`"" -PassThru
+    $pids += $p4.Id
 }
+
+$pids | Set-Content $pidFile
+Write-Ok "PIDs saved to .bmis-pids (used by stop.ps1)"
 
 Write-Host ""
 Write-Host "  +-----------------------------------------+" -ForegroundColor Green
