@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BMIS Backend — Runbook</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222636;
+      --border: #2e3248;
+      --accent: #6c8fff;
+      --accent2: #a78bfa;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --cyan: #22d3ee;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --code-bg: #0d1117;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      padding: 0 0 80px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #12142b 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 40px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    header::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(108,143,255,.15) 0%, transparent 70%);
+    }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p { color: var(--muted); margin-top: 6px; font-size: .95rem; }
+    .badges { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 999px; padding: 4px 12px; font-size: .78rem; color: var(--muted);
+    }
+    .badge span { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+    .badge.green span { background: var(--green); }
+    .badge.yellow span { background: var(--yellow); }
+    .badge.blue span { background: var(--accent); }
+
+    /* ── Layout ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Nav pills ── */
+    nav {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(15,17,23,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+    }
+    nav ul { list-style: none; display: flex; gap: 4px; max-width: 960px; margin: 0 auto; flex-wrap: wrap; }
+    nav a {
+      text-decoration: none; color: var(--muted); font-size: .82rem;
+      padding: 5px 12px; border-radius: 6px; transition: all .15s;
+    }
+    nav a:hover { background: var(--surface2); color: var(--text); }
+
+    /* ── Section ── */
+    section { margin-top: 48px; }
+    section + section { margin-top: 56px; }
+    h2 {
+      font-size: 1.25rem; font-weight: 700; color: var(--text);
+      display: flex; align-items: center; gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    h2 .icon { font-size: 1.1rem; }
+    h3 { font-size: .95rem; font-weight: 600; color: var(--accent); margin: 20px 0 8px; }
+
+    /* ── Code blocks ── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-size: .82rem;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      line-height: 1.6;
+      position: relative;
+    }
+    pre .comment { color: #4a5568; }
+    pre .cmd { color: var(--green); }
+    pre .flag { color: var(--accent); }
+    pre .val { color: var(--yellow); }
+    pre .env { color: var(--cyan); }
+    .copy-btn {
+      position: absolute; top: 10px; right: 10px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 6px; padding: 3px 10px;
+      font-size: .72rem; cursor: pointer; transition: all .15s;
+    }
+    .copy-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── Cards ── */
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .card-title { font-weight: 600; font-size: .88rem; display: flex; align-items: center; gap: 8px; }
+    .card-body { color: var(--muted); font-size: .8rem; margin-top: 6px; line-height: 1.5; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .dot-green { background: var(--green); }
+    .dot-blue { background: var(--accent); }
+    .dot-yellow { background: var(--yellow); }
+    .dot-purple { background: var(--accent2); }
+
+    /* ── Tables ── */
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; margin-top: 12px; }
+    th {
+      text-align: left; padding: 10px 14px;
+      background: var(--surface2); color: var(--muted);
+      font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+    code {
+      background: var(--code-bg); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 6px; font-size: .8rem;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      color: var(--cyan);
+    }
+
+    /* ── Callouts ── */
+    .callout {
+      border-radius: 10px; padding: 14px 18px;
+      font-size: .84rem; display: flex; gap: 12px; align-items: flex-start;
+      margin: 16px 0;
+    }
+    .callout-icon { font-size: 1.1rem; margin-top: 1px; flex-shrink: 0; }
+    .callout.info  { background: rgba(108,143,255,.1); border: 1px solid rgba(108,143,255,.3); }
+    .callout.warn  { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.3); }
+    .callout.tip   { background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.3); }
+
+    /* ── Step list ── */
+    .steps { list-style: none; counter-reset: steps; }
+    .steps li {
+      counter-increment: steps;
+      padding: 12px 0 12px 48px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+    .steps li:last-child { border-bottom: none; }
+    .steps li::before {
+      content: counter(steps);
+      position: absolute; left: 0; top: 12px;
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .78rem; font-weight: 700; color: #fff;
+    }
+
+    footer {
+      text-align: center; color: var(--muted); font-size: .78rem;
+      margin-top: 80px; padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <h1>🏛️ BMIS Backend — Runbook</h1>
+    <p>Barangay Management Information System · FastAPI + PostgreSQL + Redis + Celery</p>
+    <div class="badges">
+      <span class="badge green"><span></span>FastAPI 0.136</span>
+      <span class="badge blue"><span></span>PostgreSQL + SQLAlchemy async</span>
+      <span class="badge yellow"><span></span>Redis 7</span>
+      <span class="badge blue"><span></span>Celery 5.6</span>
+      <span class="badge green"><span></span>Pydantic v2</span>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <ul>
+    <li><a href="#quickstart">⚡ Quickstart</a></li>
+    <li><a href="#services">🧩 Services</a></li>
+    <li><a href="#dev">💻 Development</a></li>
+    <li><a href="#prod">🚀 Production</a></li>
+    <li><a href="#env">🔑 Environment</a></li>
+    <li><a href="#celery">⚙️ Celery</a></li>
+    <li><a href="#migrations">🗄️ Migrations</a></li>
+    <li><a href="#logs">📋 Logs</a></li>
+    <li><a href="#stack">🛠️ Stack</a></li>
+  </ul>
+</nav>
+
+<div class="container">
+
+  <!-- ── Quickstart ── -->
+  <section id="quickstart">
+    <h2><span class="icon">⚡</span> Quickstart</h2>
+    <ol class="steps">
+      <li>
+        <strong>Copy and configure environment</strong><br>
+        <pre style="margin-top:8px"><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="cmd">cp</span> .env.example .env
+<span class="comment"># Open .env and set DATABASE_URL, REDIS_URL, SECRET_KEY</span></pre>
+      </li>
+      <li>
+        <strong>Create virtual environment &amp; install dependencies</strong>
+        <pre style="margin-top:8px"><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="cmd">python -m venv</span> .venv
+<span class="comment"># Windows</span>
+.venv\Scripts\activate
+<span class="comment"># Linux / Mac</span>
+source .venv/bin/activate
+
+<span class="cmd">pip install</span> -r requirements.txt</pre>
+      </li>
+      <li>
+        <strong>Run database migrations</strong>
+        <pre style="margin-top:8px"><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="cmd">alembic upgrade head</span></pre>
+      </li>
+      <li>
+        <strong>Start everything with one command</strong>
+        <pre style="margin-top:8px"><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># Windows (dev)</span>
+.\scripts\dev.ps1
+
+<span class="comment"># Linux (production)</span>
+bash scripts/prod.sh</pre>
+        <div class="callout info" style="margin-top:10px">
+          <span class="callout-icon">ℹ️</span>
+          <div>On Windows, the dev script opens Windows Terminal tabs (or separate PowerShell windows if WT is not installed).
+          It also auto-runs migrations and checks Redis for you.</div>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ── Services ── -->
+  <section id="services">
+    <h2><span class="icon">🧩</span> Services Overview</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span> FastAPI</div>
+        <div class="card-body">All HTTP endpoints — auth, CRUD, WebSocket. Runs on port <strong>8000</strong>.</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-yellow"></span> Redis</div>
+        <div class="card-body">Token blacklist · RBAC permission cache (TTL 300s) · Rate limiting · Celery broker</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span> Celery Default</div>
+        <div class="card-body">Welcome emails · Blotter PDF generation · Cleanup old logs (weekly)</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-purple"></span> Celery Priority</div>
+        <div class="card-body">Emergency notifications — separate queue so alerts are never delayed by normal jobs</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span> Celery Beat</div>
+        <div class="card-body">Scheduled jobs: delete <code>system_logs</code> rows older than 90 days — every Sunday 02:00 UTC</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span> PostgreSQL</div>
+        <div class="card-body">Primary database. Async via psycopg3. Pool: 10 base + 20 overflow, recycles every 30 min.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Development ── -->
+  <section id="dev">
+    <h2><span class="icon">💻</span> Development (Windows)</h2>
+
+    <h3>One command to rule them all</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># From project root in PowerShell</span>
+.\scripts\dev.ps1</pre>
+    <p style="color:var(--muted);font-size:.84rem;margin-top:8px">This script: checks <code>.env</code> → checks venv → pings Redis → runs migrations → opens all 4 service tabs.</p>
+
+    <h3>Stop all services</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button>.\scripts\stop.ps1</pre>
+    <p style="color:var(--muted);font-size:.84rem;margin-top:8px">Kills <code>uvicorn</code>, all <code>celery</code> processes, and any Celery subprocesses. Safe to run at any time.</p>
+    <div class="callout info" style="margin-top:10px">
+      <span class="callout-icon">ℹ️</span>
+      <div>Services started by <code>dev.ps1</code> run as <strong>independent background processes</strong> — closing the launcher window does <strong>not</strong> stop them. Always use <code>stop.ps1</code> or press <kbd>Ctrl+C</kbd> inside each tab.</div>
+    </div>
+
+    <h3>Or run services manually (4 terminals)</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># Terminal 1 — FastAPI</span>
+<span class="cmd">uvicorn</span> app.main:app <span class="flag">--reload</span> <span class="flag">--port</span> <span class="val">8000</span>
+
+<span class="comment"># Terminal 2 — Celery default worker</span>
+<span class="cmd">celery</span> -A app.workers.celery_app worker -Q default <span class="flag">--loglevel=info</span> <span class="flag">--pool=solo</span>
+
+<span class="comment"># Terminal 3 — Celery priority worker (emergencies)</span>
+<span class="cmd">celery</span> -A app.workers.celery_app worker -Q priority <span class="flag">--loglevel=info</span> <span class="flag">--pool=solo</span>
+
+<span class="comment"># Terminal 4 — Celery Beat (scheduler)</span>
+<span class="cmd">celery</span> -A app.workers.celery_app beat <span class="flag">--loglevel=info</span></pre>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div><strong>Windows requirement:</strong> Always add <code>--pool=solo</code> to Celery workers on Windows.
+      The default <code>prefork</code> pool is not supported on Windows.</div>
+    </div>
+
+    <h3>Access points (dev)</h3>
+    <table>
+      <tr><th>URL</th><th>Description</th></tr>
+      <tr><td><code>http://localhost:8000</code></td><td>API root</td></tr>
+      <tr><td><code>http://localhost:8000/docs</code></td><td>Swagger UI (interactive)</td></tr>
+      <tr><td><code>http://localhost:8000/redoc</code></td><td>ReDoc documentation</td></tr>
+      <tr><td><code>http://localhost:8000/health</code></td><td>Health check endpoint</td></tr>
+    </table>
+  </section>
+
+  <!-- ── Production ── -->
+  <section id="prod">
+    <h2><span class="icon">🚀</span> Production (Linux / EC2)</h2>
+
+    <h3>One command</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button>bash scripts/prod.sh</pre>
+    <p style="color:var(--muted);font-size:.84rem;margin-top:8px">
+      If <code>supervisord</code> is installed it will use it (recommended).
+      Otherwise it falls back to launching processes directly with graceful shutdown on SIGTERM.
+    </p>
+
+    <h3>Install supervisor (recommended)</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button>pip install supervisor
+<span class="comment"># Then just run:</span>
+supervisord -c scripts/supervisord.conf
+
+<span class="comment"># Control running services:</span>
+supervisorctl -c scripts/supervisord.conf status
+supervisorctl -c scripts/supervisord.conf restart bmis:api
+supervisorctl -c scripts/supervisord.conf restart bmis:all</pre>
+
+    <h3>Or run manually (Linux)</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># FastAPI — 4 Gunicorn workers</span>
+<span class="cmd">gunicorn</span> app.main:app \
+  -k uvicorn.workers.UvicornWorker \
+  <span class="flag">--workers 4</span> <span class="flag">--bind 0.0.0.0:8000</span> <span class="flag">--timeout 60</span>
+
+<span class="comment"># Celery default worker</span>
+<span class="cmd">celery</span> -A app.workers.celery_app worker -Q default <span class="flag">--loglevel=warning</span> <span class="flag">--concurrency=4</span>
+
+<span class="comment"># Celery priority worker</span>
+<span class="cmd">celery</span> -A app.workers.celery_app worker -Q priority <span class="flag">--loglevel=warning</span> <span class="flag">--concurrency=2</span>
+
+<span class="comment"># Celery Beat</span>
+<span class="cmd">celery</span> -A app.workers.celery_app beat <span class="flag">--loglevel=warning</span></pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div>Use <strong>systemd</strong> unit files or <strong>supervisord</strong> in production so all processes
+      auto-restart on crash and start on server boot.</div>
+    </div>
+  </section>
+
+  <!-- ── Environment ── -->
+  <section id="env">
+    <h2><span class="icon">🔑</span> Environment Variables</h2>
+
+    <h3>Required (app won't start without these)</h3>
+    <table>
+      <tr><th>Variable</th><th>Example</th><th>Notes</th></tr>
+      <tr><td><code>SECRET_KEY</code></td><td><code>abc123...64chars</code></td><td>Generate: <code>python -c "import secrets; print(secrets.token_hex(64))"</code></td></tr>
+      <tr><td><code>DATABASE_URL</code></td><td><code>postgresql://user:pass@host/db</code></td><td>psycopg3 driver is applied automatically</td></tr>
+      <tr><td><code>REDIS_URL</code></td><td><code>redis://localhost:6379/0</code></td><td>Used for auth, rate limiting, and Celery broker</td></tr>
+    </table>
+
+    <h3>Differs between environments</h3>
+    <table>
+      <tr><th>Variable</th><th>Development</th><th>Production</th></tr>
+      <tr><td><code>APP_ENV</code></td><td><code>development</code></td><td><code>production</code></td></tr>
+      <tr><td><code>DEBUG</code></td><td><code>true</code></td><td><code>false</code></td></tr>
+      <tr><td><code>DATABASE_URL</code></td><td>localhost</td><td>AWS RDS endpoint</td></tr>
+      <tr><td><code>REDIS_URL</code></td><td>localhost</td><td>AWS ElastiCache endpoint</td></tr>
+      <tr><td><code>CELERY_BROKER_URL</code></td><td>empty (uses REDIS_URL)</td><td>Dedicated Redis/RabbitMQ</td></tr>
+      <tr><td><code>LOG_LEVEL_DB</code></td><td><code>DEBUG</code></td><td><code>INFO</code> or <code>WARNING</code></td></tr>
+      <tr><td><code>RATE_LIMIT_MAX_REQUESTS</code></td><td><code>1000</code> (relaxed)</td><td><code>100</code></td></tr>
+      <tr><td><code>ALLOWED_ORIGINS</code></td><td><code>localhost:3000</code></td><td>Your actual frontend domain</td></tr>
+      <tr><td><code>SENTRY_DSN</code></td><td>empty</td><td>Your Sentry project DSN</td></tr>
+    </table>
+  </section>
+
+  <!-- ── Celery ── -->
+  <section id="celery">
+    <h2><span class="icon">⚙️</span> Celery Tasks &amp; Queues</h2>
+
+    <table>
+      <tr><th>Task</th><th>Queue</th><th>Triggered by</th></tr>
+      <tr><td><code>send_welcome_email</code></td><td>default</td><td>User registration</td></tr>
+      <tr><td><code>generate_blotter_pdf</code></td><td>default</td><td>Blotter PDF request</td></tr>
+      <tr><td><code>cleanup_old_logs</code></td><td>default</td><td>Beat — every Sunday 02:00 UTC</td></tr>
+      <tr><td><code>notify_emergency_report</code></td><td><strong>priority</strong></td><td>Emergency report submitted</td></tr>
+    </table>
+
+    <h3>Monitor Celery</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># Install Flower (web UI for Celery monitoring)</span>
+pip install flower
+
+<span class="comment"># Run Flower dashboard (http://localhost:5555)</span>
+<span class="cmd">celery</span> -A app.workers.celery_app flower <span class="flag">--port=5555</span></pre>
+
+    <h3>Trigger a task manually (for testing)</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="cmd">python</span> -c "
+from app.workers.tasks import send_welcome_email
+result = send_welcome_email.delay('<span class="val">user-uuid</span>', '<span class="val">test@example.com</span>', '<span class="val">John</span>')
+print('Task ID:', result.id)
+"</pre>
+  </section>
+
+  <!-- ── Migrations ── -->
+  <section id="migrations">
+    <h2><span class="icon">🗄️</span> Database Migrations</h2>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># Apply all pending migrations</span>
+<span class="cmd">alembic upgrade head</span>
+
+<span class="comment"># Check current revision</span>
+<span class="cmd">alembic current</span>
+
+<span class="comment"># Create a new migration after changing a model</span>
+<span class="cmd">alembic revision</span> <span class="flag">--autogenerate</span> -m <span class="val">"describe_your_change"</span>
+
+<span class="comment"># Roll back one migration</span>
+<span class="cmd">alembic downgrade</span> -1
+
+<span class="comment"># View migration history</span>
+<span class="cmd">alembic history</span> --verbose</pre>
+
+    <h3>Current tables</h3>
+    <table>
+      <tr><th>Table</th><th>Description</th></tr>
+      <tr><td><code>users</code></td><td>All system users (local + OAuth)</td></tr>
+      <tr><td><code>profiles</code></td><td>Resident profile details</td></tr>
+      <tr><td><code>announcements</code></td><td>Barangay announcements</td></tr>
+      <tr><td><code>blotter_reports</code></td><td>Incident / blotter records</td></tr>
+      <tr><td><code>certificate_requests</code></td><td>Certificate applications</td></tr>
+      <tr><td><code>business_permits</code></td><td>Business permit applications</td></tr>
+      <tr><td><code>complaints</code></td><td>Resident complaints</td></tr>
+      <tr><td><code>emergency_reports</code></td><td>Emergency incident reports</td></tr>
+      <tr><td><code>emergency_alerts</code></td><td>Admin-issued public alerts</td></tr>
+      <tr><td><code>chat_messages</code></td><td>Resident chatbot messages</td></tr>
+      <tr><td><code>roles</code></td><td>RBAC roles</td></tr>
+      <tr><td><code>permissions</code></td><td>RBAC permission codes</td></tr>
+      <tr><td><code>role_permissions</code></td><td>Role ↔ Permission mapping</td></tr>
+      <tr><td><code>user_role_assignments</code></td><td>User ↔ Role mapping</td></tr>
+      <tr><td><code>system_logs</code></td><td>Persisted application logs (written async)</td></tr>
+    </table>
+  </section>
+
+  <!-- ── Logs ── -->
+  <section id="logs">
+    <h2><span class="icon">📋</span> Logging &amp; Observability</h2>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-title"><span class="dot dot-green"></span> stdout</div>
+        <div class="card-body">All logs appear in the terminal. Format: <code>timestamp | LEVEL | logger | message</code></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-blue"></span> system_logs table</div>
+        <div class="card-body">Every log at or above <code>LOG_LEVEL_DB</code> is written async to the DB. Query at <code>GET /system-logs/</code> (requires <code>system_logs.read</code> permission).</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot dot-yellow"></span> logs/ directory</div>
+        <div class="card-body">Supervisor writes per-service log files here: <code>api.log</code>, <code>celery_default.log</code>, <code>celery_priority.log</code>, <code>celery_beat.log</code></div>
+      </div>
+    </div>
+
+    <h3>Query system logs via API</h3>
+    <pre><button class="copy-btn" onclick="copyPre(this)">Copy</button><span class="comment"># List recent errors</span>
+GET /system-logs/?level=ERROR&amp;limit=50
+
+<span class="comment"># All actions by a specific user</span>
+GET /system-logs/?user_id=&lt;uuid&gt;&amp;limit=100
+
+<span class="comment"># Filter by action prefix + date range</span>
+GET /system-logs/?action=EMERGENCY&amp;from_dt=2026-05-01T00:00:00Z
+
+<span class="comment"># Count for pagination</span>
+GET /system-logs/count?level=WARNING</pre>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div>Logs older than <strong>90 days</strong> are automatically deleted by the
+      <code>cleanup_old_logs</code> Celery Beat task every Sunday at 02:00 UTC.
+      You can change the retention period by editing <code>app/workers/celery_app.py</code>.</div>
+    </div>
+  </section>
+
+  <!-- Stack Used -->
+  <section id="stack">
+    <h2><span class="icon">🛠️</span> Stack Used</h2>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:24px">Every technology in this project, what it does, and why it was chosen.</p>
+
+    <!-- FastAPI -->
+    <h3>FastAPI</h3>
+    <table>
+      <tr><th>Role</th><td>HTTP API framework — handles all routes, middleware, request validation, and WebSocket connections.</td></tr>
+      <tr><th>Why</th><td>Async-first, Pydantic v2 integration for zero-boilerplate validation, automatic OpenAPI/Swagger docs, and one of the fastest Python frameworks available.</td></tr>
+      <tr><th>Version</th><td><code>0.136</code></td></tr>
+      <tr><th>Key files</th><td><code>app/main.py</code> · <code>app/api/routes/</code> · <code>app/modules/*/router.py</code></td></tr>
+    </table>
+
+    <!-- Pydantic v2 -->
+    <h3>Pydantic v2</h3>
+    <table>
+      <tr><th>Role</th><td>Data validation and serialization for all request bodies, response models, and settings.</td></tr>
+      <tr><th>Why</th><td>v2 is 5-50x faster than v1 (Rust core). <code>ConfigDict</code> and <code>model_validator</code> give clean, type-safe schemas with minimal boilerplate.</td></tr>
+      <tr><th>Key files</th><td><code>app/modules/*/schema.py</code> · <code>app/core/config.py</code> (uses <code>BaseSettings</code>)</td></tr>
+    </table>
+
+    <!-- SQLAlchemy async -->
+    <h3>SQLAlchemy 2 (async)</h3>
+    <table>
+      <tr><th>Role</th><td>ORM and query builder for all database interactions. All queries run async — they never block the event loop.</td></tr>
+      <tr><th>Why</th><td>Industry-standard ORM with full async support via <code>AsyncSession</code>. Declarative models, relationship loading, and migration support via Alembic.</td></tr>
+      <tr><th>Pool config</th><td>10 base connections · 20 overflow · recycles every 30 min · LIFO order · rollback on return</td></tr>
+      <tr><th>Key files</th><td><code>app/db/session.py</code> · <code>app/modules/*/model.py</code></td></tr>
+    </table>
+
+    <!-- psycopg3 -->
+    <h3>psycopg3</h3>
+    <table>
+      <tr><th>Role</th><td>PostgreSQL driver — the low-level connector between SQLAlchemy and the database.</td></tr>
+      <tr><th>Why</th><td>Native async support (unlike psycopg2 which requires a thread pool workaround). Better performance and binary protocol support.</td></tr>
+      <tr><th>Key files</th><td><code>app/db/session.py</code> — connection string uses <code>postgresql+psycopg://</code></td></tr>
+    </table>
+
+    <!-- PostgreSQL -->
+    <h3>PostgreSQL (AWS RDS)</h3>
+    <table>
+      <tr><th>Role</th><td>Primary relational database — stores all application data: users, profiles, blotters, certificates, complaints, permits, chat, emergency reports, and system logs.</td></tr>
+      <tr><th>Why</th><td>ACID-compliant, excellent support for UUID primary keys, JSONB, full-text search, and row-level security. AWS RDS handles backups, failover, and patching.</td></tr>
+      <tr><th>Key config</th><td><code>DATABASE_URL</code> in <code>.env</code></td></tr>
+    </table>
+
+    <!-- Alembic -->
+    <h3>Alembic</h3>
+    <table>
+      <tr><th>Role</th><td>Database migration tool — tracks schema changes and applies them in order without touching existing data.</td></tr>
+      <tr><th>Why</th><td>Official SQLAlchemy migration companion. Version-controlled migrations mean the DB schema is always reproducible from scratch.</td></tr>
+      <tr><th>Commands</th><td><code>alembic upgrade head</code> — apply all pending migrations<br><code>alembic revision --autogenerate -m "msg"</code> — generate a new migration</td></tr>
+      <tr><th>Key files</th><td><code>alembic/</code> · <code>alembic/versions/</code> · <code>alembic/env.py</code></td></tr>
+    </table>
+
+    <!-- Redis -->
+    <h3>Redis 7</h3>
+    <table>
+      <tr><th>Role</th><td>Multi-purpose in-memory store used for 4 separate concerns:</td></tr>
+      <tr><th>1. Token blacklist</th><td>When a user logs out, their JWT is stored here until it expires — prevents reuse of revoked tokens.</td></tr>
+      <tr><th>2. Permission cache</th><td>RBAC role/permission lookups are cached with a 300-second TTL — avoids a DB query on every request.</td></tr>
+      <tr><th>3. Rate limiting</th><td>Sliding-window counters per IP/user stored in Redis — enforces request limits without a DB.</td></tr>
+      <tr><th>4. Celery broker</th><td>Task messages from FastAPI are pushed onto Redis queues; Celery workers pull from them.</td></tr>
+      <tr><th>Key config</th><td><code>REDIS_URL</code> in <code>.env</code></td></tr>
+      <tr><th>Key files</th><td><code>app/core/redis.py</code> · <code>app/middleware/rate_limit.py</code> · <code>app/workers/celery_app.py</code></td></tr>
+    </table>
+
+    <!-- Celery -->
+    <h3>Celery 5.6</h3>
+    <table>
+      <tr><th>Role</th><td>Distributed task queue — offloads slow or scheduled work from the HTTP request/response cycle.</td></tr>
+      <tr><th>Why</th><td>Sending emails, generating PDFs, and pushing emergency notifications should never slow down an API response. Celery runs them in the background.</td></tr>
+      <tr><th>Queues</th><td><code>default</code> — emails, PDFs, log cleanup<br><code>priority</code> — emergency alerts (dedicated worker, never queued behind normal tasks)</td></tr>
+      <tr><th>Beat</th><td>Built-in scheduler — runs <code>cleanup_old_logs</code> every Sunday 02:00 UTC automatically.</td></tr>
+      <tr><th>Windows note</th><td>Must use <code>--pool=solo</code> on Windows. Linux/prod uses the default prefork pool.</td></tr>
+      <tr><th>Key files</th><td><code>app/workers/celery_app.py</code> · <code>app/workers/tasks.py</code></td></tr>
+    </table>
+
+    <!-- JWT / Auth -->
+    <h3>JWT Authentication (python-jose)</h3>
+    <table>
+      <tr><th>Role</th><td>Stateless authentication — every protected request carries a signed JWT; the server validates the signature without hitting the DB.</td></tr>
+      <tr><th>Why</th><td>Scalable across multiple API instances (no shared session store needed). Combined with Redis blacklisting for logout support.</td></tr>
+      <tr><th>Key config</th><td><code>SECRET_KEY</code>, <code>ALGORITHM</code>, <code>ACCESS_TOKEN_EXPIRE_MINUTES</code> in <code>.env</code></td></tr>
+      <tr><th>Key files</th><td><code>app/core/security.py</code> · <code>app/middleware/auth_middleware.py</code> · <code>app/core/dependencies.py</code></td></tr>
+    </table>
+
+    <!-- RBAC -->
+    <h3>Role-Based Access Control (RBAC)</h3>
+    <table>
+      <tr><th>Role</th><td>Fine-grained permission system — each endpoint requires a specific permission (e.g. <code>blotter.create</code>, <code>system_logs.read</code>). Permissions are assigned to roles, roles to users.</td></tr>
+      <tr><th>Why</th><td>A barangay system has multiple user types (admin, staff, resident, official) — RBAC lets you control exactly what each can see and do without hardcoding roles in every route.</td></tr>
+      <tr><th>Cache</th><td>Permission lookups cached in Redis for 300s — a heavy role with many permissions only hits the DB once per 5 minutes.</td></tr>
+      <tr><th>Key files</th><td><code>app/modules/rbac/</code> · <code>app/core/dependencies.py</code></td></tr>
+    </table>
+
+    <!-- Repository Pattern -->
+    <h3>Repository Pattern</h3>
+    <table>
+      <tr><th>Role</th><td>All database queries are encapsulated in typed repository classes — routers never write raw SQL or ORM queries directly.</td></tr>
+      <tr><th>Why</th><td>Separates business logic from data access. Makes testing easy (swap the repo for a mock), and keeps routers thin and readable.</td></tr>
+      <tr><th>Structure</th><td><code>BaseRepository[M]</code> provides <code>get</code>, <code>list</code>, <code>create</code>, <code>update</code>, <code>delete</code>, <code>bulk_create</code>. Each module extends it with domain-specific queries.</td></tr>
+      <tr><th>Key files</th><td><code>app/repositories/base.py</code> · <code>app/repositories/*_repository.py</code></td></tr>
+    </table>
+
+    <!-- Async DB Logging -->
+    <h3>Async DB Log Handler</h3>
+    <table>
+      <tr><th>Role</th><td>Persists structured log records to the <code>system_logs</code> table without blocking HTTP requests.</td></tr>
+      <tr><th>How</th><td>Uses an <code>asyncio.Queue(maxsize=10,000)</code> as a buffer. A background worker drains the queue in batches of 50 every 2 seconds — so even a burst of logs never slows down the API.</td></tr>
+      <tr><th>Context propagation</th><td><code>ContextVar</code>s automatically attach the current <code>request_id</code> and <code>user_id</code> to every log record — no need to pass them manually.</td></tr>
+      <tr><th>Key files</th><td><code>app/core/log_handler.py</code> · <code>app/core/context.py</code> · <code>app/modules/system_logs/</code></td></tr>
+    </table>
+
+    <!-- Pytest -->
+    <h3>Pytest + HTTPX</h3>
+    <table>
+      <tr><th>Role</th><td>Automated test suite — 21 tests covering auth, CRUD endpoints, permissions, and middleware.</td></tr>
+      <tr><th>Why</th><td><code>httpx.AsyncClient</code> with <code>ASGITransport</code> lets tests hit the real FastAPI app in-process — no running server needed, no mocking the HTTP layer.</td></tr>
+      <tr><th>Run tests</th><td><code>pytest tests/ -v</code></td></tr>
+      <tr><th>Key files</th><td><code>tests/</code> · <code>pytest.ini</code></td></tr>
+    </table>
+
+    <div class="callout tip" style="margin-top:28px">
+      <span class="callout-icon">💡</span>
+      <div>All packages and their pinned versions are in <code>requirements.txt</code>. Run <code>pip install -r requirements.txt</code> to reproduce the exact environment.</div>
+    </div>
+  </section>
+
+</div>
+
+<footer class="container">
+  BMIS Backend · FastAPI · Generated May 2026
+</footer>
+
+<script>
+  function copyPre(btn) {
+    const pre = btn.parentElement;
+    const text = pre.innerText.replace('Copy\n', '').trim();
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+  }
+</script>
+</body>
+</html>

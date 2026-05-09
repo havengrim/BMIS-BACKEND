@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from datetime import date
 import uuid
@@ -34,5 +34,4 @@ class ComplaintResponse(ComplaintCreate):
     priority: ComplaintPriority
     resolution_notes: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

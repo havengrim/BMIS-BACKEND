@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 import uuid
 from app.modules.emergency.model import EmergencyType, EmergencyStatus
@@ -20,8 +20,7 @@ class EmergencyReportResponse(EmergencyReportCreate):
     status: EmergencyStatus
     alert_message: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EmergencyAlertCreate(BaseModel):
@@ -33,5 +32,4 @@ class EmergencyAlertResponse(EmergencyAlertCreate):
     id: uuid.UUID
     status: EmergencyStatus
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import date
 import uuid
@@ -30,5 +30,4 @@ class BusinessPermitResponse(BusinessPermitCreate):
     remarks: Optional[str] = None
     expiry_date: Optional[date] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

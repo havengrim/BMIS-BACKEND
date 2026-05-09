@@ -22,6 +22,8 @@ from app.modules.business_permits.model import BusinessPermit  # noqa: F401
 from app.modules.complaints.model import Complaint  # noqa: F401
 from app.modules.emergency.model import EmergencyReport, EmergencyAlert  # noqa: F401
 from app.modules.chat.model import ChatMessage  # noqa: F401
+from app.modules.rbac.model import Role, Permission, RolePermission, UserRoleAssignment  # noqa: F401
+from app.modules.system_logs.model import SystemLog  # noqa: F401
 
 # Fix for Windows: psycopg async requires SelectorEventLoop
 if sys.platform == "win32":

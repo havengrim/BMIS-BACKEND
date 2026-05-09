@@ -1,4 +1,5 @@
 import bcrypt
+import secrets
 from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -20,23 +21,22 @@ class Security:
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=expires_minutes or settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-        payload.update({"exp": expire, "type": "access"})
+        payload.update({"exp": expire, "type": "access", "jti": secrets.token_hex(16)})
         return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     @staticmethod
     def create_refresh_token(data: dict) -> str:
         payload = data.copy()
         expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        payload.update({"exp": expire, "type": "refresh"})
+        payload.update({"exp": expire, "type": "refresh", "jti": secrets.token_hex(16)})
         return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     @staticmethod
-    def decode_token(token: str) -> dict:
+    def decode_token(token: str) -> Optional[dict]:
         try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            return payload
-        except JWTError as e:
-            raise ValueError(f"Invalid token: {e}")
+            return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        except JWTError:
+            return None
 
     @staticmethod
     def is_token_type(payload: dict, expected_type: str) -> bool:
