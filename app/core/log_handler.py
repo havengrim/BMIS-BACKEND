@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.core.context import current_user_id_var, request_id_var
+from app.core.context import current_ip_address_var, current_user_id_var, request_id_var
 
 # Loggers that must NEVER write to DB (avoid recursion / infinite loops)
 _SUPPRESS_PREFIXES = ("app.core.log_handler", "sqlalchemy", "asyncio", "uvicorn", "fastapi")
@@ -43,6 +43,7 @@ class AsyncDBHandler(logging.Handler):
             # Pull user/request IDs from contextvar (set by middleware + dependency)
             user_id = getattr(record, "user_id", None) or current_user_id_var.get("") or None
             request_id = getattr(record, "request_id", None) or request_id_var.get("") or None
+            ip_address = getattr(record, "ip_address", None) or current_ip_address_var.get("") or None
 
             entry = {
                 "level": record.levelname,
@@ -51,6 +52,7 @@ class AsyncDBHandler(logging.Handler):
                 "message": self.format(record),
                 "user_id": str(user_id) if user_id else None,
                 "request_id": str(request_id) if request_id else None,
+                "ip_address": str(ip_address) if ip_address else None,
             }
             _log_queue.put_nowait(entry)
         except asyncio.QueueFull:
@@ -98,6 +100,7 @@ async def _db_log_worker() -> None:
                             message=e["message"],
                             user_id=e.get("user_id"),
                             request_id=e.get("request_id"),
+                            ip_address=e.get("ip_address"),
                             created_at=datetime.now(timezone.utc),
                         ))
                     try:
@@ -122,6 +125,7 @@ async def _db_log_worker() -> None:
                                 message=e["message"],
                                 user_id=e.get("user_id"),
                                 request_id=e.get("request_id"),
+                                ip_address=e.get("ip_address"),
                                 created_at=datetime.now(timezone.utc),
                             ))
                         await session.commit()

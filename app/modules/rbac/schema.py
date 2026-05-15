@@ -1,12 +1,14 @@
-import re
 from datetime import datetime
 from typing import Optional
 import uuid
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-_CODE_RE = re.compile(r'^[a-z0-9_]+\.[a-z0-9_]+$')
-_SLUG_RE = re.compile(r'^[a-z0-9_]+$')
+from app.validation.rbac_validators import (
+    validate_non_empty_name,
+    validate_permission_code,
+    validate_slug,
+)
 
 
 class PermissionCreate(BaseModel):
@@ -19,26 +21,20 @@ class PermissionCreate(BaseModel):
     @field_validator('code')
     @classmethod
     def code_format(cls, v: str) -> str:
-        v = v.strip().lower()
-        if not _CODE_RE.match(v):
-            raise ValueError('Permission code must be lowercase module.action format (e.g. users.read)')
-        return v
+        return validate_permission_code(v)
 
     @field_validator('module', 'action')
     @classmethod
     def slug_format(cls, v: str) -> str:
-        v = v.strip().lower()
-        if not _SLUG_RE.match(v):
-            raise ValueError('Must be lowercase letters, numbers, or underscores only')
-        return v
+        return validate_slug(
+            v,
+            error_message='Must be lowercase letters, numbers, or underscores only',
+        )
 
     @field_validator('name')
     @classmethod
     def name_not_empty(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError('name must not be empty')
-        return v
+        return validate_non_empty_name(v)
 
 
 class PermissionResponse(PermissionCreate):
@@ -57,18 +53,12 @@ class RoleCreate(BaseModel):
     @field_validator('code')
     @classmethod
     def code_slug(cls, v: str) -> str:
-        v = v.strip().lower()
-        if not _SLUG_RE.match(v):
-            raise ValueError('Role code must be lowercase letters, numbers, or underscores only')
-        return v
+        return validate_slug(v, field_label='Role code')
 
     @field_validator('name')
     @classmethod
     def name_not_empty(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError('name must not be empty')
-        return v
+        return validate_non_empty_name(v)
 
 
 class RoleResponse(RoleCreate):

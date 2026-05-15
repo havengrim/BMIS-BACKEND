@@ -15,6 +15,7 @@ class SystemLog(Base):
         Index("ix_system_logs_level", "level"),
         Index("ix_system_logs_action", "action"),
         Index("ix_system_logs_user_id", "user_id"),
+        Index("ix_system_logs_ip_address", "ip_address"),
         Index("ix_system_logs_created_at", "created_at"),
     )
 
@@ -25,6 +26,7 @@ class SystemLog(Base):
     message = Column(Text, nullable=False)
     user_id = Column(UUID(as_uuid=True), nullable=True)
     request_id = Column(String(100), nullable=True)
+    ip_address = Column(String(64), nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

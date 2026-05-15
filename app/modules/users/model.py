@@ -45,6 +45,10 @@ class User(Base):
     is_verified = Column(Boolean, default=False, nullable=False)
     last_login = Column(DateTime(timezone=True), nullable=True)
 
+    # TOTP / MFA
+    totp_secret = Column(String(64), nullable=True)   # encrypted base32 secret
+    totp_enabled = Column(Boolean, default=False, nullable=False)
+
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)

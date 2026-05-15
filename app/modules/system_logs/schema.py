@@ -13,6 +13,7 @@ class SystemLogResponse(BaseModel):
     message: str
     user_id: Optional[uuid.UUID] = None
     request_id: Optional[str] = None
+    ip_address: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
