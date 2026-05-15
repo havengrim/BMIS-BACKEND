@@ -7,7 +7,13 @@ Start workers with:
 Broker/backend both default to REDIS_URL (already required by the app).
 Override via env vars CELERY_BROKER_URL / CELERY_RESULT_BACKEND if needed.
 """
+import sys
+import asyncio
 import logging
+
+# psycopg3 async requires SelectorEventLoop on Windows (ProactorEventLoop is not supported)
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from celery import Celery
 from celery.schedules import crontab

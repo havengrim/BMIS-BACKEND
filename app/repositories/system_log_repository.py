@@ -20,12 +20,13 @@ class SystemLogRepository(BaseRepository[SystemLog]):
         level: Optional[str] = None,
         action: Optional[str] = None,
         user_id: Optional[uuid.UUID] = None,
+        ip_address: Optional[str] = None,
         from_dt: Optional[datetime] = None,
         to_dt: Optional[datetime] = None,
         skip: int = 0,
         limit: int = 50,
     ) -> Sequence[SystemLog]:
-        filters = self._build_filters(level, action, user_id, from_dt, to_dt)
+        filters = self._build_filters(level, action, user_id, ip_address, from_dt, to_dt)
         return await self.list(db, skip=skip, limit=limit, filters=filters or None)
 
     async def count_filtered(
@@ -35,10 +36,11 @@ class SystemLogRepository(BaseRepository[SystemLog]):
         level: Optional[str] = None,
         action: Optional[str] = None,
         user_id: Optional[uuid.UUID] = None,
+        ip_address: Optional[str] = None,
         from_dt: Optional[datetime] = None,
         to_dt: Optional[datetime] = None,
     ) -> int:
-        filters = self._build_filters(level, action, user_id, from_dt, to_dt)
+        filters = self._build_filters(level, action, user_id, ip_address, from_dt, to_dt)
         return await self.count(db, filters=filters or None)
 
     @staticmethod
@@ -46,6 +48,7 @@ class SystemLogRepository(BaseRepository[SystemLog]):
         level: Optional[str],
         action: Optional[str],
         user_id: Optional[uuid.UUID],
+        ip_address: Optional[str],
         from_dt: Optional[datetime],
         to_dt: Optional[datetime],
     ) -> list:
@@ -56,6 +59,8 @@ class SystemLogRepository(BaseRepository[SystemLog]):
             filters.append(SystemLog.action.ilike(f"{action}%"))
         if user_id:
             filters.append(SystemLog.user_id == user_id)
+        if ip_address:
+            filters.append(SystemLog.ip_address == ip_address)
         if from_dt:
             filters.append(SystemLog.created_at >= from_dt)
         if to_dt:
